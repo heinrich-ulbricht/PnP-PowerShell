@@ -162,21 +162,91 @@ namespace SharePointPnP.PowerShell.Commands.Lists
                     query.ViewXml = queryElement.ToString();
                 }
 
-                do
+                try
                 {
-                    var listItems = list.GetItems(query);
-                    ClientContext.Load(listItems);
-                    ClientContext.ExecuteQueryRetry();
-
-                    WriteObject(listItems, true);
-
-                    if (ScriptBlock != null)
+                    do
                     {
-						ScriptBlock.Invoke(listItems);
-					}
+                        var listItems = list.GetItems(query);
+                        ClientContext.Load(listItems);
+                        ClientContext.ExecuteQueryRetry();
 
-					query.ListItemCollectionPosition = listItems.ListItemCollectionPosition;
-                } while (query.ListItemCollectionPosition != null);
+                        WriteObject(listItems, true);
+
+                        if (ScriptBlock != null)
+                        {
+                            ScriptBlock.Invoke(listItems);
+                        }
+
+                        query.ListItemCollectionPosition = listItems.ListItemCollectionPosition;
+                    } while (query.ListItemCollectionPosition != null);
+                } catch (ServerException e)
+                {
+                    if (e.ServerErrorCode == -2147024860 && e.ServerErrorTypeName == "Microsoft.SharePoint.SPQueryThrottledException")
+                    {
+                        // check if we can use "special" iteration logic that works by paging over the ID (this works since ID is indexed)
+                        if (!HasCamlQuery())
+                        {
+                            // first get the maximum ID for the list to know where paging ends
+                            var originalViewXml = query.ViewXml;
+                            query.ViewXml = @"<View> <Query> <OrderBy> <FieldRef Name='ID' Ascending='FALSE' /> </OrderBy> </Query> <ViewFields> <FieldRef Name='Id' /> </ViewFields> <RowLimit>1</RowLimit></View>";
+                            var listItems = list.GetItems(query);
+                            ClientContext.Load(listItems);
+                            ClientContext.ExecuteQueryRetry();
+                            if (listItems.Count != 1)
+                            {
+                                // something went wrong - just throw the original exception
+                                throw;
+                            }
+                            var maxId = listItems[0].Id;
+                            var currentPage = 0;
+                            // use specified page size or a default near the limit
+                            var pageSize = PageSize;
+                            if (pageSize <= 0)
+                            {
+                                pageSize = 4999;
+                            }
+                            do
+                            {
+                                var queryElement = XElement.Parse(originalViewXml);
+                                var rowLimit = queryElement.Descendants("RowLimit").FirstOrDefault();
+                                if (rowLimit != null)
+                                {
+                                    rowLimit.RemoveAll();
+                                }
+                                var queryChildElement = queryElement.Descendants("Query").FirstOrDefault();
+                                if (queryChildElement != null)
+                                {
+                                    // build paged query
+                                    var whereElement = XElement.Parse($@"<Where><And><Gt><FieldRef Name='ID' /><Value Type='Text'>{currentPage * pageSize}</Value></Gt><Lt><FieldRef Name='ID' /><Value Type='Text'>{(currentPage + 1) * pageSize}</Value></Lt></And></Where>");
+                                    queryChildElement.Add(whereElement);
+                                }
+
+                                query.ViewXml = queryElement.ToString();
+                                listItems = list.GetItems(query);
+                                ClientContext.Load(listItems);
+                                ClientContext.ExecuteQueryRetry();
+
+                                WriteObject(listItems, true);
+
+                                if (ScriptBlock != null)
+                                {
+                                    ScriptBlock.Invoke(listItems);
+                                }
+
+                                currentPage++;
+                            } while (currentPage * pageSize < maxId);
+                        } else
+                        {
+                            // the user specified a CAML query? can't handle this
+                            throw;
+                        }
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                    
+                }
             }
         }
 
