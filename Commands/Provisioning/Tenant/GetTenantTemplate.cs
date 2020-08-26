@@ -56,14 +56,18 @@ namespace PnP.PowerShell.Commands.Provisioning.Site
             if (ParameterSpecified(nameof(Configuration)))
             {
                 extractConfiguration = Configuration.GetConfiguration(SessionState.Path.CurrentFileSystemLocation.Path);
-                if(!string.IsNullOrEmpty(SiteUrl))
+            } else
+            {
+                extractConfiguration = new ExtractConfiguration();
+            }
+
+            if (!string.IsNullOrEmpty(SiteUrl))
+            {
+                if (extractConfiguration.Tenant.Sequence == null)
                 {
-                    if(extractConfiguration.Tenant.Sequence == null)
-                    {
-                        extractConfiguration.Tenant.Sequence = new OfficeDevPnP.Core.Framework.Provisioning.Model.Configuration.Tenant.Sequence.ExtractSequenceConfiguration();
-                    }
-                    extractConfiguration.Tenant.Sequence.SiteUrls.Add(SiteUrl);
+                    extractConfiguration.Tenant.Sequence = new OfficeDevPnP.Core.Framework.Provisioning.Model.Configuration.Tenant.Sequence.ExtractSequenceConfiguration();
                 }
+                extractConfiguration.Tenant.Sequence.SiteUrls.Add(SiteUrl);
             }
 
             if (ParameterSetName == PARAMETERSET_ASFILE)
