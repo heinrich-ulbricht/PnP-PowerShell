@@ -5,16 +5,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [3.25.2009.0] (not yet released)
+## [3.26.2010.0 - unreleased]
 
 ### Added
 
+- Added Register-PnPManagementShellAccess cmdlets to register correct access required for the multi-tenant application PnP Management Shell which is used behind the scenes of the Provisioning Engine for certain actions towards SharePoint Online.
+
+## [3.25.2009.1]
+
+### Changed
+- Underlying PnP Sites Core library has been updated to fix an issue with the Provisioning Engine and Teams Provisioning.
+
+## [3.25.2009.0] 
+
+### Added
+- Added ability to set site collection specific expiration on anonymous sharing links through the `-AnonymousLinkExpirationInDays` and `-OverrideTenantAnonymousLinkExpirationPolicy` attributes on `Set-PnPSite` and `Set-PnPTenantSite` [PR #2866](https://github.com/pnp/PnP-PowerShell/pull/2866)
 
 ### Changed
 
 
 ### Contributors
-
+- Koen Zomers [koenzomers]
+- Erwin van hunen [erwinvanhunen]
+- Todd Klindt [ToddKlindt]
 
 ## [3.24.2008.1]
 
